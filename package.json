@@ -1,0 +1,35 @@
+{
+  "name": "pi-sync-config",
+  "version": "1.0.0",
+  "description": "Sync your pi config (settings, extensions, themes, skills, prompts) to a remote git repository",
+  "keywords": ["pi-package",
+    "pi",
+    "pi-extension"],
+  "type": "commonjs",
+  "main": "src/index.ts",
+  "files": [
+    "src/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc --noEmit",
+    "lint": "tsc --noEmit"
+  },
+  "author": "Pouya Mozaffar Moghadam",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pouyamozaffarmagham/pi-sync-config.git"
+  },
+  "bugs": {
+    "url": "https://github.com/pouyamozaffarmagham/pi-sync-config/issues"
+  },
+  "homepage": "https://github.com/pouyamozaffarmagham/pi-sync-config#readme",
+  "pi": {
+    "extensions": ["./src/index.ts"]
+  },
+  "peerDependencies": {
+    "@mariozechner/pi-coding-agent": "*"
+  }
+}
