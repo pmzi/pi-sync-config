@@ -57,6 +57,11 @@ Optionally set a custom pull interval (default 1 day):
 > **SSH only** — HTTPS URLs are rejected. Make sure your SSH key is added to
 > your Git host (e.g. `~/.ssh/id_ed25519.pub` → GitHub → Settings → SSH keys).
 
+If the remote URL is changed (via `/sync-setup` or by editing `pi-sync.json`),
+the existing local clone is deleted and re-cloned from the new remote. You are
+warned and must confirm — your local commit history on the old remote will be
+lost.
+
 pi-sync will:
 
 1. Clone (or push to) the remote repo.
