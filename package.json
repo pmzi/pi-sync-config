@@ -20,12 +20,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/pouyamozaffarmagham/pi-sync-config.git"
+    "url": "https://github.com/pmzi/pi-sync-config.git"
   },
   "bugs": {
-    "url": "https://github.com/pouyamozaffarmagham/pi-sync-config/issues"
+    "url": "https://github.com/pmzi/pi-sync-config/issues"
   },
-  "homepage": "https://github.com/pouyamozaffarmagham/pi-sync-config#readme",
+  "homepage": "https://github.com/pmzi/pi-sync-config#readme",
   "pi": {
     "extensions": ["./src/index.ts"]
   },
