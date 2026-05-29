@@ -23,6 +23,9 @@ in sync across machines via a remote git repository.
 | `sessions/`               | Local session history                                                                 |
 | `git/`, `npm/`, `bin/`    | Installed packages — reinstalled automatically via `packages` in settings.json        |
 
+A default `.gitignore` is written on first setup only — if one already exists it
+is left untouched, so you can customize it for your own needs.
+
 ### settings.json handling
 
 `settings.json` is safe to sync — pi stores secrets in `auth.json` and

@@ -147,26 +147,30 @@ async function stageFiles(cfg: SyncConfig): Promise<void> {
     }
   }
 
-  // Write a .gitignore so the repo never accidentally contains sensitive files
-  const gitignore =
-    [
-      "# Secrets & credentials — never sync these",
-      "auth.json",
-      "",
-      "# Runtime / machine-local state",
-      "sessions/",
-      "git/",
-      "npm/",
-      "bin/",
-      "sync-repo/",
-      "pi-sync.json",
-      "*.log",
-      "",
-      "# User context files (may contain sensitive business logic)",
-      "AGENTS.md",
-      "CLAUDE.md",
-    ].join("\n") + "\n";
-  await fsp.writeFile(path.join(dest, ".gitignore"), gitignore, "utf8");
+  // Write a .gitignore so the repo never accidentally contains sensitive files.
+  // Only create it if it doesn't already exist — the remote's version takes priority.
+  const gitignorePath = path.join(dest, ".gitignore");
+  if (!fs.existsSync(gitignorePath)) {
+    const gitignore =
+      [
+        "# Secrets & credentials — never sync these",
+        "auth.json",
+        "",
+        "# Runtime / machine-local state",
+        "sessions/",
+        "git/",
+        "npm/",
+        "bin/",
+        "sync-repo/",
+        "pi-sync.json",
+        "*.log",
+        "",
+        "# User context files (may contain sensitive business logic)",
+        "AGENTS.md",
+        "CLAUDE.md",
+      ].join("\n") + "\n";
+    await fsp.writeFile(gitignorePath, gitignore, "utf8");
+  }
 }
 
 /**
