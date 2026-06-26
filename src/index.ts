@@ -147,26 +147,30 @@ async function stageFiles(cfg: SyncConfig): Promise<void> {
     }
   }
 
-  // Write a .gitignore so the repo never accidentally contains sensitive files
-  const gitignore =
-    [
-      "# Secrets & credentials — never sync these",
-      "auth.json",
-      "",
-      "# Runtime / machine-local state",
-      "sessions/",
-      "git/",
-      "npm/",
-      "bin/",
-      "sync-repo/",
-      "pi-sync.json",
-      "*.log",
-      "",
-      "# User context files (may contain sensitive business logic)",
-      "AGENTS.md",
-      "CLAUDE.md",
-    ].join("\n") + "\n";
-  await fsp.writeFile(path.join(dest, ".gitignore"), gitignore, "utf8");
+  // Write a .gitignore so the repo never accidentally contains sensitive files.
+  // Only create it if it doesn't already exist — the remote's version takes priority.
+  const gitignorePath = path.join(dest, ".gitignore");
+  if (!fs.existsSync(gitignorePath)) {
+    const gitignore =
+      [
+        "# Secrets & credentials — never sync these",
+        "auth.json",
+        "",
+        "# Runtime / machine-local state",
+        "sessions/",
+        "git/",
+        "npm/",
+        "bin/",
+        "sync-repo/",
+        "pi-sync.json",
+        "*.log",
+        "",
+        "# User context files (may contain sensitive business logic)",
+        "AGENTS.md",
+        "CLAUDE.md",
+      ].join("\n") + "\n";
+    await fsp.writeFile(gitignorePath, gitignore, "utf8");
+  }
 }
 
 /**
@@ -232,6 +236,24 @@ export default function (pi: ExtensionAPI) {
   }): Promise<void> {
     if (!config) return;
     const repo = config.localRepoPath;
+
+    // Refuse to push if the local clone's origin no longer matches the
+    // configured URL — the user may have changed the remote without
+    // re-running /sync-setup.
+    if (fs.existsSync(path.join(repo, ".git"))) {
+      const { stdout: originUrl, code } = await pi.exec(
+        "git",
+        ["-C", repo, "remote", "get-url", "origin"],
+        { env: { ...process.env, GIT_TERMINAL_PROMPT: "0" } },
+      );
+      if (code === 0 && originUrl.trim() !== config.repoUrl) {
+        ctx?.ui.notify(
+          `pi-sync: remote URL changed (configured: ${config.repoUrl}, origin: ${originUrl.trim()}) — re-run /sync-setup`,
+          "error",
+        );
+        return;
+      }
+    }
 
     try {
       // Clone if the local repo doesn't exist yet
@@ -408,6 +430,31 @@ export default function (pi: ExtensionAPI) {
       return;
     }
 
+    // Check whether the local clone's origin matches the configured URL.
+    // If someone edited pi-sync.json directly, the local clone still points
+    // at the old remote — silently using it would be confusing.
+    const repo = path.join(PI_DIR, "sync-repo");
+    const hasLocalRepo = fs.existsSync(path.join(repo, ".git"));
+    if (hasLocalRepo) {
+      const { stdout: originUrl, code } = await pi.exec(
+        "git",
+        ["-C", repo, "remote", "get-url", "origin"],
+        { env: { ...process.env, GIT_TERMINAL_PROMPT: "0" } },
+      );
+      if (code === 0 && originUrl.trim() !== config.repoUrl) {
+        ctx.ui.setStatus(
+          "pi-sync",
+          "⚠ remote URL changed — re-run /sync-setup",
+        );
+        ctx.ui.notify(
+          `pi-sync: the configured remote (${config.repoUrl}) no longer matches the local clone's origin (${originUrl.trim()}).\n` +
+            "Please re-run /sync-setup to re-clone from the new remote.",
+          "warning",
+        );
+        return; // skip syncing this session
+      }
+    }
+
     ctx.ui.setStatus("pi-sync", `→ ${config.repoUrl}`);
 
     // Pull any remote changes since last session
@@ -475,6 +522,29 @@ export default function (pi: ExtensionAPI) {
           "error",
         );
         return;
+      }
+
+      // If the remote URL changed and a local clone exists, warn and reset.
+      const repo = path.join(PI_DIR, "sync-repo");
+      const urlChanged = config && config.repoUrl !== repoUrl;
+      const hasLocalRepo = fs.existsSync(path.join(repo, ".git"));
+      if (urlChanged && hasLocalRepo) {
+        const confirmed = await ctx.ui.input(
+          `pi-sync: remote URL changed from\n  ${config.repoUrl}\nto\n  ${repoUrl}\n\n` +
+            "The local clone will be deleted and re-cloned from the new remote.\n" +
+            "Your local commit history on the old remote will be lost.\n\n" +
+            "Proceed? (type 'yes' to confirm)",
+          "yes",
+        );
+        if (confirmed !== "yes") {
+          ctx.ui.notify(
+            "pi-sync: setup cancelled — URL change rejected",
+            "error",
+          );
+          return;
+        }
+        ctx.ui.notify("pi-sync: removing local clone…", "info");
+        await removeRecursive(repo);
       }
 
       cleanup();
